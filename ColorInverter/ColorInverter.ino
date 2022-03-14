@@ -1,4 +1,8 @@
-
+/**
+ * Target Platform Arduino Nano 33 IoT
+ * TCS34725 Color sensor on I2C
+ * Some NeoPixels on NEOPIN
+ */
 
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
@@ -13,7 +17,7 @@ const int _GBASE_ = __COUNTER__ + 1; // Index of 1st __COUNTER__ ref below
 #define _G1_ pow((__COUNTER__ - _GBASE_) / 255.0, _GAMMA_) * 255.0 + 0.5,
 #define _G2_ _G1_ _G1_ _G1_ _G1_ _G1_ _G1_ _G1_ _G1_ // Expands to 8 items
 #define _G3_ _G2_ _G2_ _G2_ _G2_ _G2_ _G2_ _G2_ _G2_ // Expands to 64 items
-const uint8_t PROGMEM gammaTable[] = { _G3_ _G3_ _G3_ _G3_ }; // 256 items
+//const uint8_t PROGMEM gammaTable[] = { _G3_ _G3_ _G3_ _G3_ }; // 256 items
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_PIXELS, NEOPIN, NEO_GRB + NEO_KHZ800); // strip object
 
@@ -42,20 +46,17 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS3472
 void setup() {
   Serial.begin(115200);
   
-  Serial.println("Hello World!");
+  pinMode(NEOPIN, OUTPUT);
 
-    pinMode(NEOPIN, OUTPUT);
+  strip.begin();
 
-      strip.begin();
+  strip.setBrightness(BRIGHTNESS); // set brightness
 
-      strip.setBrightness(BRIGHTNESS); // set brightness
-
-
-  if (tcs.begin()) {
-    //Serial.println("Found sensor");
-  } else {
+  if (!tcs.begin()) {
+    while (true) {
     Serial.println("No TCS34725 found ... check your connection!");
-    while (1); // halt!
+      delay(100);
+    }; // halt!
   }
 
   // thanks PhilB for this gamma table!
@@ -101,8 +102,8 @@ void loop() {
   //Serial.print("\tS:\t"); Serial.print(hsv[1]);
   //Serial.print("\tV:\t"); Serial.print(hsv[2]);
 
-  // display same color
-  strip.setPixelColor(0, strip.Color(red, green, blue));
+  // display same color:
+  // strip.setPixelColor(0, strip.Color(red, green, blue));
         
   //strip.setPixelColor(1, hsv2rgb(hue1, int(255.0 * hsv[1]), 255));
 
@@ -149,9 +150,9 @@ void loop() {
   // inverse value (sat=full from previous) // BEST - choose this
   HSV.v = 255 - val;
   HSV2RGB4(HSV, &RGB);
-  strip.setPixelColor(2, strip.Color(RGB.r, RGB.g, RGB.b));
-  strip.setPixelColor(3, strip.Color(RGB.r, RGB.g, RGB.b));
-  strip.setPixelColor(4, strip.Color(RGB.r, RGB.g, RGB.b));
+  for (int i = 0; i < NUM_PIXELS; ++i) {
+    strip.setPixelColor(i, strip.Color(RGB.r, RGB.g, RGB.b));
+  }
 
   // inverse sat and value - okay, but often not saturated enough when "full" colors are the input
   //HSV.s = 255 - sat;
@@ -169,37 +170,4 @@ void loop() {
   strip.show();
 
   Serial.println();
-}
-
-// HSV (hue-saturation-value) to RGB function used for the next two modes.
-uint32_t hsv2rgb(int32_t h, uint8_t s, uint8_t v) {
-  uint8_t n, r, g, b;
-
-  // Hue circle = 0 to 1530 (NOT 1536!)
-  h %= 1530;           // -1529 to +1529
-  if(h < 0) h += 1530; //     0 to +1529
-  n  = h % 255;        // Angle within sextant; 0 to 254 (NOT 255!)
-  switch(h / 255) {    // Sextant number; 0 to 5
-   case 0 : r = 255    ; g =   n    ; b =   0    ; break; // R to Y
-   case 1 : r = 254 - n; g = 255    ; b =   0    ; break; // Y to G
-   case 2 : r =   0    ; g = 255    ; b =   n    ; break; // G to C
-   case 3 : r =   0    ; g = 254 - n; b = 255    ; break; // C to B
-   case 4 : r =   n    ; g =   0    ; b = 255    ; break; // B to M
-   default: r = 255    ; g =   0    ; b = 254 - n; break; // M to R
-  }
-
-  uint32_t v1 =   1 + v; // 1 to 256; allows >>8 instead of /255
-  uint16_t s1 =   1 + s; // 1 to 256; same reason
-  uint8_t  s2 = 255 - s; // 255 to 0
-
-  r = ((((r * s1) >> 8) + s2) * v1) >> 8;
-  g = ((((g * s1) >> 8) + s2) * v1) >> 8;
-  b = ((((b * s1) >> 8) + s2) * v1) >> 8;
-
-  // gamma correction
-  r = pgm_read_byte(&gammaTable[r]);
-  g = pgm_read_byte(&gammaTable[g]);
-  b = pgm_read_byte(&gammaTable[b]);
-
-  return ((uint32_t)r << 16) | ((uint16_t)g << 8) | b;
 }
