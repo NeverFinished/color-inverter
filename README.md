@@ -10,7 +10,7 @@ and display the color on top via some multicolor LEDs.
 We need a microcontroller board, a rgb sensor, some programmable rgb leds. Preferrably
 we choose a board with connectivity.
 
-## BOM
+## Bill of Materials (BOM)
 
 * Arduino Nano 33 IoT
 * TCS34725 rgb color sensor
